@@ -12,7 +12,7 @@ document.addEventListener("DOMContentLoaded", () => {
     let noWordsLeft = true;
     let gridHasSettled = false;
     let letterPosRow = 0;
-    let letterPosCol = 0;
+    let letterPosCol = Math.floor(numCols / 2);;
     let moveBy = 0;
 
     function generateRandomLetter() {
@@ -28,6 +28,7 @@ document.addEventListener("DOMContentLoaded", () => {
         gridHasSettled = false;
         letterPosRow = 0;
         letterPosCol = Math.floor(numCols / 2);
+        moveBy = 0;
     }
 
     function renderGrid() {
@@ -170,10 +171,16 @@ document.addEventListener("DOMContentLoaded", () => {
                         x = 0;
                         y = 1;
                         if (row === letterPosRow && col === letterPosCol) {
-                            x += moveBy;
-                            moveBy = 0;
-                            letterPosCol += x;
-                            letterPosRow += y;
+                            // Move the letter down if it can move further right or left
+                            if (col + moveBy < 0 || col + moveBy > numCols - 1) {
+                                // Can't move further right or left, so don't move the letter
+                                moveBy = 0;
+                            } else {
+                                x += moveBy;
+                                moveBy = 0;
+                                letterPosCol += x;
+                                letterPosRow += y;
+                            }
                         }
                         // Move the letter down
                         gridArray[row + y][col + x] = gridArray[row][col];
