@@ -2,22 +2,72 @@ document.addEventListener("DOMContentLoaded", () => {
     const grid = document.getElementById("grid");
 
     // Define your grid size and initialize it with empty cells
-    const numRows = 10; // Adjust as needed
+    const numRows = 5; // Adjust as needed
     const numCols = 10; // Adjust as needed
     const gridArray = Array.from({ length: numRows }, () => Array(numCols).fill(null));
     const sizeOfWord = 5;
 
     // Define a boolean variable to track if a collision is detected
     let gameIsOver = false;
-    let noWordsLeft = true;
     let gridHasSettled = false;
     let letterPosRow = 0;
     let letterPosCol = Math.floor(numCols / 2);;
     let moveBy = 0;
+    let score = 0;
+    const resetButton = document.getElementById('reset-button');
+    const scoreElement = document.getElementById('score');
+
+    resetButton.addEventListener('click', resetGame);
+
+    function resetGame() {
+        // Reset the game state
+        gameIsOver = false;
+        gridHasSettled = false;
+        letterPosRow = 0;
+        letterPosCol = Math.floor(numCols / 2);
+        moveBy = 0;
+        score = 0;
+        // Reset the grid
+        gridArray.forEach(row => row.fill(null));
+
+        // Hide the reset button
+        resetButton.style.display = 'none';
+
+        // Reset the score
+        score = 0;
+        updateScore();
+
+        // Restart the game loop
+        gameLoop();
+    }
+
+    function updateScore() {
+        scoreElement.textContent = 'Score: ' + score;
+    }
+
+    // Call updateScore whenever the score changes
+    // ...
 
     function generateRandomLetter() {
-        // Generate a random letter (A-Z)
-        const randomLetter = String.fromCharCode(65 + Math.floor(Math.random() * 26));
+        // Check if loadedWords is empty
+        if (loadedWords.length === 0) {
+            console.error('loadedWords is empty');
+            return Math.random().toString(36).replace(/[^a-z]+/g, '').substr(0, 1); // Return a random letter
+        }
+
+        // Create an array of letters with the frequency of each letter
+        const letters = [];
+        for (let i = 0; i < loadedWords.length; i++) {
+            for (let j = 0; j < loadedWords[i].length; j++) {
+                // Exclude spaces and special characters
+                if (loadedWords[i][j] === ' ' || loadedWords[i][j] === '-' || loadedWords[i][j] === '\'') continue;
+                letters.push(loadedWords[i][j]);
+            }
+        }
+
+        // Generate a random letter weighted by the frequency of letters in the word list
+        const randomLetter = letters[Math.floor(Math.random() * letters.length)];
+        console.log("Random letter: " + randomLetter);
         return randomLetter;
     }
 
@@ -62,6 +112,8 @@ document.addEventListener("DOMContentLoaded", () => {
         // This can include displaying a "Game Over" message or other actions.
         alert("Game Over"); // You can customize this to your liking.
         gameIsOver = true; // Set this to true to stop the game loop
+        // Show the reset button
+        resetButton.style.display = 'block';
     }
 
     function checkGameOver() {
@@ -74,46 +126,29 @@ document.addEventListener("DOMContentLoaded", () => {
 
 
     function checkAndRemoveWords() {
-        // Loop through the grid from the bottom row to the top row
-        // Check words by starting with the current letter and looking at the next 5 consecutive letters as the word
-        // If the word is valid, remove the letters from the grid
-        // If the word is not valid, move on to the next letter
-        // Then iterated over each column and check for words going down
-        // If a word is found, remove the letters from the grid
-        // Conintue iterating through horizontal and vertical scans for words until there are no words found in two consecutive scans
-        noWordsLeft = false; // Set this to false if a word is found
-        // Main loop
-        while (!noWordsLeft) {
-            // Loop through hortizontally and vertically twice and if no words foudn, set noWordsLeft to true
-            for (let j = 0; j < 2; j++) {
-                // Check horizontally
-                for (let row = numRows - 1; row >= 0; row--) {
-                    for (let col = 0; col < numCols; col++) {
-                        //iterate over size of word
-                        let word = "";
-                        for (let i = 0; i < sizeOfWord; i++) {
-                            word += gridArray[row][col + i];
-                        }
-                        if (isValidWord(word)) {
-                            // Remove the word
-                            removeWord(row, col, row, col + sizeOfWord - 1);
-                        }
-                    }
-                }
-                // Check vertically
-                for (let col = 0; col < numCols; col++) {
-                    for (let row = numRows - 1; row >= 0; row--) {
-                        //iterate over size of word
-                        let word = "";
-                        for (let i = 0; i < sizeOfWord; i++) {
-                            word += gridArray[row + i][col];
-                        }
-                        if (isValidWord(word)) {
-                            // Remove the word
-                            removeWord(row, col, row + sizeOfWord - 1, col);
-                        }
-                    }
-                }
+        // Find any words in the grid and remove them
+        // Check each row
+        for (let row = 0; row < numRows; row++) {
+            let word = '';
+            for (let col = 0; col < numCols; col++) {
+                word += gridArray[row][col] || ''; // Add the letter or an empty string
+            }
+            if (isValidWord(word)) {
+                // Remove the word from the grid
+                removeWord(row, 0, row, numCols - 1);
+                noWordsLeft = false;
+            }
+        }
+        // Check each column
+        for (let col = 0; col < numCols; col++) {
+            let word = '';
+            for (let row = 0; row < numRows; row++) {
+                word += gridArray[row][col] || ''; // Add the letter or an empty string
+            }
+            if (isValidWord(word)) {
+                // Remove the word from the grid
+                removeWord(0, col, numRows - 1, col);
+                noWordsLeft = false;
             }
         }
     }
@@ -176,10 +211,13 @@ document.addEventListener("DOMContentLoaded", () => {
                                 // Can't move further right or left, so don't move the letter
                                 moveBy = 0;
                             } else {
-                                x += moveBy;
-                                moveBy = 0;
-                                letterPosCol += x;
-                                letterPosRow += y;
+                                // Check again if the letter can move further down with the moveby included
+                                if (gridArray[row + 1][col + moveBy] === null) {
+                                    x += moveBy;
+                                    moveBy = 0;
+                                    letterPosCol += x;
+                                    letterPosRow += y;
+                                }
                             }
                         }
                         // Move the letter down
@@ -201,7 +239,7 @@ document.addEventListener("DOMContentLoaded", () => {
         checkGameOver();
 
         // Now that moves have been done, check for any words and remove them
-        //checkAndRemoveWords();
+        checkAndRemoveWords();
 
         // Add a new letter to the grid
         if (gridHasSettled) addLetterToGrid();
